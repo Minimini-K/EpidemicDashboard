@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Singapore Covid-19 Spatiotemporal Cluster Dashboard</title>
+    <link rel="stylesheet" href="leaflet/leaflet.css">
+    <link rel="stylesheet" href="dc.min.css"/>
+    <script src="leaflet/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v5.js"></script>
+    <script src="leaflet-heat.js"></script>
+    <script src="simpleheat.js"></script>
+    <script src="crossfilter.v1.js"></script>
+    <script src="dc.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://cdn.bootcss.com/FileSaver.js/2014-11-29/FileSaver.js"></script>
+    <!-- Load animation tweening lib requirement for CanvasFlowMapLayer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/16.6.0/Tween.min.js"></script>
+    <!-- then load CanvasFlowMapLayer -->
+    <script src="CanvasFlowmapLayer.js"></script>
+    <style type="text/css">
+        a:link {
+            color: black;
+        }
+
+        a:visited {
+            color: black;
+        }
+
+        a:hover {
+            color: black;
+        }
+
+        a:active {
+            color: black;
+        }
+        .square {
+           width: 7px;
+            height: 7px;
+           background: darkgrey;
+        }
+        .circle {
+            border-radius: 50%;
+            width: 7px;
+            height: 7px;
+            /* 宽度和高度需要相等 */
+        }
+
+        .circle2 {
+            border-radius: 50%;
+            width: 9px;
+            height: 9px;
+            /* 宽度和高度需要相等 */
+        }
+
+        #header {
+            border: 1px solid lightgrey;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            margin-left: 10px;
+            margin-right: 10px;
+            background-color: lightgrey;
+            margin-bottom: 15px;
+            height: 90px
+        }
+
+        #mapdiv {
+            margin-left: 10px;
+            height: 390px;
+            width: 64%;
+        }
+
+        #map {
+            position: relative;
+            top: 10px;
+            left: 10px;
+            height: 300px;
+            width: 97%;
+        }
+
+        #legend,#legend1,#legend2 {
+            position: relative;
+            top: 10px;
+            margin-left: 10px;
+        }
+
+        #barChart {
+            margin-left: 10px;
+            position: absolute;
+            top: 520px;
+            height: 235px;
+            width: 63%;
+        }
+
+        #barChart1 {
+            position: relative;
+            left: 15px;
+
+        }
+
+        #typeSelect {
+            position: absolute;
+            left: 66%;
+            font-size: 13px;
+            line-height: 25px;
+            width: 32.5%;
+        }
+
+        #pieChart {
+            position: absolute;
+            top: 270px;
+            left: 66%;
+            height: 235px;
+            width: 32.5%;
+        }
+
+        #pieChart1 {
+            position: relative;
+            
+            left: 50px;
+            width: 470px;
+        }
+
+        #intro {
+            position: absolute;
+            top: 520px;
+            left: 66%;
+            height: 235px;
+            width: 32.5%;
+        }
+        .reset {
+            position: relative;
+            top: 5px;
+        }
+
+        #infoTitle {
+            position: absolute;
+            line-height: 23px;
+            width: 32.5%;
+            left: 66%;
+            top: 183px;
+        }
+
+    </style>
+</head>
+
+<body style="overflow-x:hidden;overflow-y:scroll">
+
+<div id="header">
+    <b><label style="position: relative;top:15px;margin-left: 10px;font-size:30px">Singapore Covid-19 Analytical
+        Dashboard
+
+    </label></b>
+    <button id="resetButton" type="button"
+            style="position: absolute;background-color: #4d93c3;border-radius:1mm;font-size: 12px;border:1px solid #377fbd;color: #ffffff;width:75px;height: 25px;top:30px;right: 30px;"
+            onclick="javascript:location.reload()">Reset All
+    </button>
+    <label style="position: absolute;top:70px;left: 30px;font-size:13px">Data source: Singapore Ministry of
+        Health (<a href="https://www.moh.gov.sg/covid-19/past-updates">https://www.moh.gov.sg/covid-19/past-updates</a>)</label>
+    <label style="position: absolute;top:70px;right: 30px;font-size:13px">Hui Zhang</label>
+</div>
+
+<form id="typeSelect" style=" border: 1px solid lightgrey; border-radius:8px">
+    <div style="background:lightgrey;border-top-left-radius:6px;border-top-right-radius:6px "><b><label
+            style="font-size: 16px;margin-left: 10px; ">Current Type:</label></b></div>
+    <input type="radio" value="All cases" name="Type" checked="checked"/>All cases
+    <input type="radio" value="Domestic" name="Type" />Domestic
+    <input type="radio" value="Imported" name="Type"/>Imported
+    <input type="radio" value="Evacuated from Wuhan" name="Type"/>Evacuated from Wuhan
+</form>
+
+<div id="mapdiv" style=" border: 1px solid lightgrey; border-radius:8px">
+    <div style="background:lightgrey;line-height: 26px;border-top-left-radius:6px;border-top-right-radius:6px ">
+        <b><label style="font-size: 16px;margin-left: 10px;">Map:</label></b>
+    </div>
+    <div id="map"></div>
+    <div class = "all" id="legend">
+        <label style="font-size: 14px">Legend:&nbsp&nbsp&nbsp&nbsp&nbspHome address&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspHotel address</label>
+        <div class="circle" style=" background-color:#fbb4ae;position: relative;left: 60px; top:-12px"></div>
+        <div class="circle" style=" background-color:#b3cde3;position: relative;left: 190px; top:-19px"></div>
+    </div>
+    <div class = "domestic" id="legend1">
+        <label style="font-size: 14px;position: relative;top:-35px">Legend:&nbsp&nbsp&nbsp&nbsp&nbspHome address/Destination case&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspIntermediate case&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspOriginal case&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspLink between cases</label>
+        <div class="circle" style=" background-color:#fbb4ae;position: relative;left: 60px; top:-47px"></div>
+        <div class="circle2" style=" background-color:#935853;position: relative;left: 309px; top:-55px"></div>
+        <div class="circle" style=" background-color:#fbb4ae;position: relative;left: 310px; top:-63px"></div>
+        <div class="circle2" style=" background-color:#935853;position: relative;left: 465px; top:-71px"></div>
+        <div style="width:40px;height:2px;background-color:#969696;position: relative;left: 585px; top:-76px"></div>
+        <label style="font-size: 14px;position: relative;left: 53px;top:-73px">&nbsp&nbsp&nbsp&nbsp&nbspCluster 1&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspCluster 2&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspCluster 3&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspCluster 4&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspCluster 5&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspCluster 6&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspCluster 7</label>
+        <div class="circle" style=" background-color:#e41a1c;position: relative;left: 60px; top:-85px"></div>
+        <div class="circle" style=" background-color:#377eb8;position: relative;left: 155px; top:-92px"></div>
+        <div class="circle" style=" background-color:#4daf4a;position: relative;left: 252px; top:-99px"></div>
+        <div class="circle" style=" background-color:#984ea3;position: relative;left: 347px; top:-106px"></div>
+        <div class="circle" style=" background-color:#ff7f00;position: relative;left: 442px; top:-113px"></div>
+        <div class="circle" style=" background-color:#ffff33;position: relative;left: 537px; top:-120px"></div>
+        <div class="circle" style=" background-color:#a65628;position: relative;left: 635px; top:-127px"></div>
+        <label style="font-size: 14px;position: relative;left: 53px;top:-126px">&nbsp&nbsp&nbsp&nbsp&nbspCluster 8&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspCluster 9&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbspNo cluster</label>
+        <div class="circle" style=" background-color:#f781bf;position: relative;left: 60px; top:-138px"></div>
+        <div class="circle" style=" background-color:#585c0b;position: relative;left: 155px; top:-145px"></div>
+        <div class="circle" style=" background-color:#868282;position: relative;left: 252px; top:-152px"></div>
+    </div>
+    <div class = "import" id="legend2">
+        <label style="font-size: 14px;position: relative;top:-201px">Legend:&nbsp&nbsp&nbsp&nbsp&nbspHotel address</label>
+        <div class="circle" style=" background-color:#b3cde3;position: relative;left: 60px; top:-212.5px"></div>
+    </div>
+</div>
+
+<div id="barChart" style=" border: 1px solid lightgrey; border-radius:8px">
+    <div style="background:lightgrey;line-height: 23px;border-top-left-radius:6px;border-top-right-radius:6px ">
+        <b><label style="font-size: 16px;margin-left: 10px;">Case number per day
+            (Filterable):</label></b></div>
+    <div id="barChart1">
+        <div class="reset" style="visibility:hidden;">
+            <a style="color:grey;font-size:13px" href="javascript:barChart1.filterAll();dc.renderAll()">Reset</a>
+        </div>
+    </div>
+
+</div>
+
+<div id="infoTitle" style=" border: 1px solid lightgrey; border-radius:8px">
+    <div style="background:lightgrey;border-top-left-radius:6px;border-top-right-radius:6px "><b><label
+            style="font-size: 16px;margin-left: 10px">Current Selection:</label></b></div>
+    <label id="caseNum1" style="color:black;font-size:15px;margin-left: 10px">Case number: <span id="spanTotalNum"
+                                                                                                 style="font-size:15px"
+                                                                                                 class="filter-count headline">102</span></label>
+    </br>
+    <label id="currentDate" style="font-size: 15px;margin-left: 10px">Date: <span id="dateFilter" class="datefilter"
+                                                                                  style="font-size:15px">Jan 24 - Feb 29</span></label>
+</div>
+
+<div class="pie" id="pieChart" style=" border: 1px solid lightgrey; border-radius:8px">
+    <div style="background:lightgrey;line-height: 23px;border-top-left-radius:6px;border-top-right-radius:6px ">
+        <b><label id="pieTitle" style="font-size: 16px;margin-left: 10px">Type
+            (Filterable):</label></b></div>
+    <div id="pieChart1">
+        <div class="reset" style="visibility:hidden;">
+            <a style="color:grey;font-size:13px" href="javascript:pieChart1.filterAll();dc.renderAll()">Reset</a>
+        </div>
+    </div>
+
+</div>
+
+<div class = "domestic" id="intro"  style=" border: 1px solid lightgrey; border-radius:8px">
+    <div style="background:lightgrey;line-height: 23px;border-top-left-radius:6px;border-top-right-radius:6px ">
+        <b><label id="pieTitle" style="font-size: 16px;margin-left: 10px">Introduction</label></b></div>
+    <div style="margin-left: 10px;margin-right: 10px;margin-top: 5px;font-size: 14.5px">
+        <div class = "square" class = "square" style="position: relative;left:2px;top: 14px"></div>
+        <label>&nbsp&nbsp&nbspThe flow map is used to show the links between two cases. (Source: <a href = "https://github.com/sarahbellum/Canvas-Flowmap-Layer">https://github.com/sarahbellum/Canvas-Flowmap-Layer</a>)</label>
+        <div class = "square" style="position: relative;left:2px;top:13px"></div>
+
+        <label>&nbsp&nbsp&nbspDefined Distance Density-based Clustering is use to find clusters of home address points. The visualized result is conducted in Arcgis Pro with minimum 2 points per cluster and 2 km search distance. (Source: <a href = "https://pro.arcgis.com/en/pro-app/tool-reference/spatial-statistics/how-density-based-clustering-works.htm">https:// pro.arcgis.com/en/pro-app/tool-reference/spatial-sta tistics/how-density-based-clustering-works.htm</a>)</label>
+    </div>
+</div>
+
+</body>
+
+<script type="text/javascript" src='main.js'>
+    
+</script>
+
+</html>
